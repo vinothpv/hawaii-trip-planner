@@ -61,14 +61,20 @@
       }
       .wrap { max-width: 680px; width: 100%; margin: 0 auto; padding: 0 8px; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
       h1, h2, h3 { font-family: Georgia, "Times New Roman", serif; font-weight: 700; line-height: 1.15; }
-      /* Proper header — compact stacked rows: title + family, dates + tools,
-         Save plan + proof. No hero image, so planning still starts fast. */
-      .hero { display: flex; flex-direction: column; gap: 3px; padding: 5px 2px 5px; flex: 0 0 auto; border-bottom: 1px solid var(--line); }
-      .hero-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
-      .hero h1 { margin: 0; font-size: 17px; flex: 0 0 auto; }
+      /* Compact header: row 1 = title + dates (left) and the family chip
+         (right); row 2 = all five actions in a single no-wrap row of small
+         equal-width buttons. Top padding always includes the safe-area
+         inset, so no header content ever sits under the iPhone status bar
+         when the app runs standalone. No hero image, so planning starts fast. */
+      .hero { display: flex; flex-direction: column; gap: 3px; padding: calc(5px + env(safe-area-inset-top)) 2px 5px; flex: 0 0 auto; border-bottom: 1px solid var(--line); }
+      .hero-row { display: flex; align-items: center; gap: 6px; }
+      .hero-id { flex: 1 1 auto; min-width: 0; }
+      .hero h1 { margin: 0; font-size: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
       .hero p { margin: 0; font-size: 11.5px; font-weight: 600; color: var(--ink2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .hero-row .app-tools { margin-left: auto; }
+      .hero-actions { flex-wrap: nowrap; }
+      .hero-actions .tool-btn { flex: 1 1 0; min-width: 0; text-align: center; padding-left: 2px; padding-right: 2px; overflow: hidden; }
       .save-proof { font-size: 10.5px; font-weight: 700; color: var(--teal); line-height: 1.25; }
+      .save-proof:empty { display: none; }
       /* Other families' picks, read from the shared sheet — one small line
          under an activity or booked item. */
       .famline { display: block; font-size: 11px; font-weight: 700; color: var(--teal); margin-top: 2px; line-height: 1.3; }
@@ -102,9 +108,9 @@
       .view-panel { display: none; flex: 1 1 auto; min-height: 0; height: 100%; max-height: 100%; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 10px; }
       .view-panel.active { display: block; }
       #days-sec.active { display: flex; flex-direction: column; height: 100%; max-height: 100%; overflow: hidden; padding-bottom: 0; }
-      /* Generous bottom padding so the last rows (incl. the More places
-         summary) scroll fully clear of the Prev/Next strip. */
-      #days { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 56px; }
+      /* Modest bottom padding inside the scroll area; the Prev/Next strip
+         below it is slim and in-flow, not an overlay. */
+      #days { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 16px; }
       /* Fixed strip (now inside the collapsed meta fold) */
       .fixed-strip { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; flex: 0 0 auto; }
       .fixed-strip .chip { font-size: 11px; padding: 2px 7px; }
@@ -166,9 +172,9 @@
       .today-jump[hidden] { display: none; }
       /* True full-screen / installed-app mode: use every pixel, respect notches */
       :fullscreen body, :fullscreen .wrap { height: 100%; }
-      @media (display-mode: standalone), (display-mode: fullscreen) {
-        .hero { padding-top: calc(3px + env(safe-area-inset-top)); }
-      }
+      /* The "show header" bar sits at the very top in focus mode — it also
+         clears the status bar via the safe-area inset. */
+      .show-chrome-bar { margin-top: calc(4px + env(safe-area-inset-top)); }
       .day-tab .dow { font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--ink2); }
       .day-tab .dnum { font-size: 12.5px; font-weight: 800; white-space: nowrap; }
       .day-tab .dcnt { font-size: 10px; font-weight: 700; color: var(--teal); min-height: 12px; }
@@ -176,8 +182,9 @@
       .day-tab[aria-selected="true"] .dow,
       .day-tab[aria-selected="true"] .dcnt { color: var(--teal-ink); opacity: .92; }
       .day-tab:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
-      .day-nav { display: flex; align-items: center; gap: 8px; margin: 0; padding-top: 4px; border-top: 1px solid var(--line); flex: 0 0 auto; }
-      .day-nav .pos { flex: 1; text-align: center; font-size: 12px; font-weight: 700; color: var(--ink2); }
+      .day-nav { display: flex; align-items: center; gap: 6px; margin: 0; padding: 2px 0 calc(2px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); flex: 0 0 auto; }
+      .day-nav .pos { flex: 1; text-align: center; font-size: 11.5px; font-weight: 700; color: var(--ink2); }
+      .day-nav .btn { min-height: 30px; padding: 3px 10px; font-size: 12.5px; border-radius: 7px; }
       .day-nav .btn:disabled { opacity: .45; cursor: default; }
       /* Day cards */
       .day {
@@ -394,7 +401,7 @@
          at ~390px the day's choices dominate the screen. */
       @media (max-width: 560px) {
         .wrap { padding: 0 7px; }
-        .hero { padding: 4px 1px 4px; gap: 2px; }
+        .hero { padding: calc(4px + env(safe-area-inset-top)) 1px 4px; gap: 2px; }
         .hero h1 { font-size: 15.5px; }
         .hero p { font-size: 10.5px; line-height: 1.2; }
         .meta-fold summary { min-height: 18px; padding: 1px 1px; font-size: 11px; }
@@ -413,14 +420,16 @@
         .day-tab .dcnt { font-size: 9.5px; white-space: nowrap; min-height: 11px; }
         .day > img { height: 36px; }
         .day-body { padding: 5px 7px 7px; }
-        .day-nav .btn { min-height: 34px; padding: 4px 9px; font-size: 12.5px; }
+        .day-nav .btn { min-height: 28px; padding: 2px 8px; font-size: 12px; }
+        .day-nav .pos { font-size: 11px; }
       }
       /* Closed collapsibles must fully hide their contents (author display
          styles on children would otherwise leave them laid out). */
       details:not([open]) > :not(summary) { display: none !important; }
       /* Family identification — a saved choice on this phone, no account */
       .fam-chip {
-        margin-left: auto; flex: 0 0 auto; appearance: none; cursor: pointer;
+        flex: 0 1 auto; min-width: 0; max-width: 44%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        appearance: none; cursor: pointer;
         border: 1.5px solid var(--teal); background: var(--pickbg); color: var(--ink);
         border-radius: 999px; padding: 1px 8px; font: inherit; font-size: 11px; font-weight: 800; min-height: 24px;
       }
@@ -458,6 +467,14 @@
       .sheet-fail { font-size: 11.5px; color: var(--coral); margin: 4px 0 0; line-height: 1.3; }
       .sheet-fail[hidden] { display: none !important; }
       .day-bk .dbk-line { margin: 0 0 2px 8px; }
+      /* Add-booking shortcuts: a prominent button at the top of the Bookings
+         view, and a small one under each day's booked list. */
+      .bk-add-top { width: 100%; min-height: 40px; font-size: 14.5px; margin: 2px 0 6px; }
+      .daybk-add {
+        appearance: none; cursor: pointer; margin: 0 0 5px; border: 1.5px dashed var(--teal);
+        background: transparent; color: var(--teal); border-radius: 7px; padding: 3px 9px;
+        font: inherit; font-size: 12px; font-weight: 800; min-height: 26px;
+      }
       /* Finalized mode — only picked stops + map show on each day */
       .final-banner {
         flex: 0 0 auto; margin-top: 4px; background: var(--goldbg); border: 1px solid var(--gold);
@@ -469,12 +486,37 @@
       body.finalized .more-box { display: none; }
       body.finalized .pick-label { display: none; }
       body.finalized .add-stop { display: none; }
+      body.finalized .daybk-add { display: none; }
       body.finalized .mv-btn { display: none; }
       body.finalized .delstop-wrap { display: none; }
       body.finalized .opt { pointer-events: none; }
       body.finalized .opt .gmap { pointer-events: auto; }
       body.finalized .sugg-box { border: 0; margin-top: 0; }
       body.finalized .sugg-box > summary { display: none; }
+      /* Per-day finalize button in each day's header row */
+      .dayfin-btn {
+        appearance: none; cursor: pointer; flex: 0 0 auto; border: 1.5px solid var(--line);
+        background: var(--surface); color: var(--ink); border-radius: 999px; padding: 1px 8px;
+        font: inherit; font-size: 11px; font-weight: 800; min-height: 24px; white-space: nowrap;
+      }
+      .dayfin-btn.is-final { background: var(--teal); border-color: var(--teal); color: var(--teal-ink); }
+      /* The global Finalize controls every day, so the per-day buttons
+         step aside while it is on. */
+      body.finalized .dayfin-btn { display: none; }
+      /* Per-day finalized: the global treatment, scoped to the one day —
+         only its picked stops and the map show; editing controls hide. */
+      .day.day-final .opt[aria-pressed="false"] { display: none; }
+      .day.day-final .opt-row:has(.opt[aria-pressed="false"]) { display: none; }
+      .day.day-final .more-box { display: none; }
+      .day.day-final .pick-label { display: none; }
+      .day.day-final .add-stop { display: none; }
+      .day.day-final .daybk-add { display: none; }
+      .day.day-final .mv-btn { display: none; }
+      .day.day-final .delstop-wrap { display: none; }
+      .day.day-final .opt { pointer-events: none; }
+      .day.day-final .opt .gmap { pointer-events: auto; }
+      .day.day-final .sugg-box { border: 0; margin-top: 0; }
+      .day.day-final .sugg-box > summary { display: none; }
       @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
     </style>
   </head>
@@ -483,22 +525,20 @@
       <button type="button" class="show-chrome-bar" id="show-chrome-btn" aria-label="Show header">☰ Show header</button>
       <header class="hero">
         <div class="hero-row">
-          <h1>Hawaii Trip Planner</h1>
+          <div class="hero-id">
+            <h1>Hawaii Trip Planner</h1>
+            <p id="hero-range">Dec 14–27, 2026</p>
+          </div>
           <button type="button" class="fam-chip" id="fam-chip" hidden></button>
         </div>
-        <div class="hero-row">
-          <p id="hero-range">Dec 14–27, 2026</p>
-          <span class="app-tools">
-            <button type="button" class="tool-btn" id="install-btn">⬇ Install app</button>
-            <button type="button" class="tool-btn" id="fs-btn" aria-label="Toggle full screen">⛶ Full screen</button>
-            <button type="button" class="tool-btn" id="hide-chrome-btn" aria-pressed="false" aria-label="Hide header to focus on this day">Hide header</button>
-          </span>
+        <div class="hero-row hero-actions">
+          <button type="button" class="tool-btn" id="install-btn" aria-label="Install app">⬇ Install</button>
+          <button type="button" class="tool-btn" id="fs-btn" aria-label="Toggle full screen">⛶ Full</button>
+          <button type="button" class="tool-btn" id="hide-chrome-btn" aria-pressed="false" aria-label="Hide header to focus on this day">Hide</button>
+          <button type="button" class="tool-btn primary" id="save-plan-btn" aria-label="Save plan">💾 Save</button>
+          <button type="button" class="tool-btn" id="finalize-btn" aria-label="Finalize plan">✓ Finalize</button>
         </div>
-        <div class="hero-row">
-          <button type="button" class="tool-btn primary" id="save-plan-btn">💾 Save plan</button>
-          <button type="button" class="tool-btn" id="finalize-btn">✓ Finalize plan</button>
-          <span class="save-proof" id="save-proof" role="status"></span>
-        </div>
+        <span class="save-proof" id="save-proof" role="status"></span>
       </header>
 
       <div class="final-banner" id="final-banner" hidden>Finalized — tap Edit plan to change anything.</div>
@@ -572,10 +612,11 @@
           <h2>Booking details</h2>
           <div class="sub">Yours save on this phone</div>
         </div>
-        <p class="hint">The group's known bookings are pre-filled. Tap <b>Edit</b> on any card to add your own confirmation codes, flight numbers and cabin — or add a new booking below. Everything you enter stays on this phone and is still here when you reopen the page.</p>
+        <button type="button" class="btn primary bk-add-top" id="bk-add-top">＋ Add booking</button>
+        <p class="hint">The group's known bookings are pre-filled. Tap <b>Edit</b> on any card to add your own confirmation codes, flight numbers and cabin — or tap <b>＋ Add booking</b> above for a new one. Everything you enter stays on this phone and is still here when you reopen the page.</p>
         <div id="carpool"></div>
         <div id="bookings"></div>
-        <details class="intro-box" style="margin-top:2px;">
+        <details class="intro-box" id="add-bk-box" style="margin-top:2px;">
           <summary>＋ Add a booking <span aria-hidden="true">▾</span></summary>
           <div style="padding:0 4px 6px;">
         <form class="add-form" id="add-form" style="border:0;padding-top:0;">
@@ -584,6 +625,8 @@
             <option>Flight</option><option>Cruise</option><option>Hotel</option>
             <option>Rental car</option><option>Activity ticket</option><option>Other</option>
           </select>
+          <label for="af-day">Day</label>
+          <select id="af-day"></select>
           <label for="af-title">Title</label>
           <input id="af-title" required placeholder="e.g. United — Honolulu to RDU" />
           <label for="af-details">Details</label>
@@ -1081,6 +1124,10 @@
     /* ---------- Finalized mode (saved on this phone) ---------- */
     var LS_FINAL = "htp_finalized_v1";
     var finalized = loadJSON(LS_FINAL, false) === true;
+    /* Per-day finalize: { dayIndex: true } — a finalized day shows only
+       its picked stops + map, like the global mode but for one day. */
+    var LS_FINAL_DAYS = "htp_final_days_v1";
+    var finalDays = loadJSON(LS_FINAL_DAYS, {}) || {};
     /* The 6 standing deadlines in the To book view — information only.
        Declared here, before the first renderPicks() call, because
        renderTodoView reads it. */
@@ -1405,7 +1452,8 @@
       var html = "";
       if (d.img) html += '<img src="' + d.img + '" alt="' + d.imgAlt + '" loading="lazy" />';
       html += '<div class="day-body"><div class="day-top"><span class="day-date">' + d.date + '</span>' +
-        '<span class="day-count" id="cnt-' + di + '"></span></div>' +
+        '<span class="day-count" id="cnt-' + di + '"></span>' +
+        '<button type="button" class="dayfin-btn" id="dayfin-' + di + '" data-dayfin="' + di + '" aria-pressed="false">✓ Finalize this day</button></div>' +
         "<h3>" + d.title + "</h3>" +
         '<p class="stay">' + d.stay + "</p>" +
         (d.only ? '<p class="only-banner">👨‍👩‍👧 Praveen Chess family only — the rest of the group arrives Dec 16 night</p>' : "");
@@ -1891,6 +1939,8 @@
       "bk-hotel-1": [2], "bk-hotel-2": [12], "bk-cars": [2, 3, 4, 6, 7, 8, 9, 10, 11], "bk-haleakala": [7]
     };
     function bookingDaysFor(b) {
+      /* A day picked in the add form wins over everything else. */
+      if (b.days && b.days.length) return b.days.slice();
       if (BOOKING_DAYS[b.id]) return BOOKING_DAYS[b.id];
       var days = [];
       function pushDay(dnum) {
@@ -1911,16 +1961,19 @@
         var box = document.getElementById("daybk-" + di);
         if (!box) return;
         var list = bookings.filter(function (b) { return bookingDaysFor(b).indexOf(di) !== -1; });
-        if (!list.length) { box.innerHTML = ""; return; }
-        var cats = list.map(function (b) { return b.cat; }).join(" · ");
-        var html = '<details class="day-bk"><summary>🎫 Booked for this day (' + list.length + "): " + esc(cats) + ' <span aria-hidden="true">▾</span></summary>';
-        list.forEach(function (b) {
-          var lines = (b.details || "").split("\n").filter(function (s) { return s.trim(); });
-          html += "<p><b>" + esc(b.title) + "</b></p>";
-          lines.forEach(function (s) { html += '<p class="dbk-line">' + esc(s) + "</p>"; });
-          if (b.conf) html += '<p class="dbk-line"><span class="dbk-conf">Conf: ' + esc(b.conf) + "</span></p>";
-        });
-        html += "</details>";
+        var html = "";
+        if (list.length) {
+          var cats = list.map(function (b) { return b.cat; }).join(" · ");
+          html = '<details class="day-bk"><summary>🎫 Booked for this day (' + list.length + "): " + esc(cats) + ' <span aria-hidden="true">▾</span></summary>';
+          list.forEach(function (b) {
+            var lines = (b.details || "").split("\n").filter(function (s) { return s.trim(); });
+            html += "<p><b>" + esc(b.title) + "</b></p>";
+            lines.forEach(function (s) { html += '<p class="dbk-line">' + esc(s) + "</p>"; });
+            if (b.conf) html += '<p class="dbk-line"><span class="dbk-conf">Conf: ' + esc(b.conf) + "</span></p>";
+          });
+          html += "</details>";
+        }
+        html += '<button type="button" class="daybk-add" data-addbk="' + di + '">＋ Add booking for this day</button>';
         box.innerHTML = html;
       });
     }
@@ -1976,11 +2029,42 @@
       }
     });
 
+    /* Fill the add-form's Day picker once (index values match DAYS). */
+    (function fillAddDayOptions() {
+      var sel = document.getElementById("af-day");
+      if (!sel) return;
+      var html = '<option value="">No specific day</option>';
+      DAYS.forEach(function (d, di) { html += '<option value="' + di + '">' + esc(d.date) + "</option>"; });
+      sel.innerHTML = html;
+    })();
+
+    /* Open the add-booking form: jump to the Bookings view, unfold the
+       form, optionally pre-fill the day, and scroll it into view. Used by
+       the top-of-view button (no day) and each day's own button. */
+    function openAddBooking(di) {
+      showView("bookings-sec");
+      var box = document.getElementById("add-bk-box");
+      if (box) box.open = true;
+      var sel = document.getElementById("af-day");
+      if (sel) sel.value = (typeof di === "number" && !isNaN(di)) ? String(di) : "";
+      var sec = document.getElementById("bookings-sec");
+      if (sec) sec.scrollTop = sec.scrollHeight;
+      var title = document.getElementById("af-title");
+      if (title) setTimeout(function () { try { title.focus({ preventScroll: true }); } catch (e) { title.focus(); } }, 80);
+    }
+    document.getElementById("bk-add-top").addEventListener("click", function () { openAddBooking(null); });
+    document.addEventListener("click", function (e) {
+      var ab = e.target.closest ? e.target.closest("[data-addbk]") : null;
+      if (ab) openAddBooking(parseInt(ab.getAttribute("data-addbk"), 10));
+    });
+
     document.getElementById("add-form").addEventListener("submit", function (e) {
       e.preventDefault();
+      var afDay = document.getElementById("af-day");
       bookings.push({
         id: "bk-" + Date.now(),
         cat: document.getElementById("af-cat").value,
+        days: afDay && afDay.value !== "" ? [parseInt(afDay.value, 10)] : null,
         title: document.getElementById("af-title").value.trim(),
         details: document.getElementById("af-details").value.trim(),
         conf: document.getElementById("af-conf").value.trim()
@@ -2141,7 +2225,7 @@
       function isStandalone() {
         return (window.matchMedia && (window.matchMedia("(display-mode: standalone)").matches || window.matchMedia("(display-mode: fullscreen)").matches)) || window.navigator.standalone === true;
       }
-      function syncFsLabel() { if (fsBtn) fsBtn.textContent = document.fullscreenElement ? "✕ Exit full screen" : "⛶ Full screen"; }
+      function syncFsLabel() { if (fsBtn) fsBtn.textContent = document.fullscreenElement ? "✕ Exit" : "⛶ Full"; }
       if (fsBtn) fsBtn.addEventListener("click", function () {
         try {
           if (document.fullscreenElement) { document.exitFullscreen(); }
@@ -2228,6 +2312,7 @@
     refreshDayVisibility();
     showDay(activeDay, false);
     applyFinalized(false);
+    applyAllDayFinals();
     renderPicks();
     renderBookings();
     /* Left open overnight during the trip? Jump to the new today when the
@@ -2256,6 +2341,7 @@
       saveJSON(LS_ORDER, routeOrder);
       saveJSON(LS_FAMILY, family);
       saveJSON(LS_FINAL, finalized);
+      saveJSON(LS_FINAL_DAYS, finalDays);
       var proof = document.getElementById("save-proof");
       var back = loadJSON(LS_PICKS, null);
       var nPicked = 0;
@@ -2378,7 +2464,7 @@
     function applyFinalized(openMap) {
       document.body.classList.toggle("finalized", finalized);
       var btn = document.getElementById("finalize-btn");
-      if (btn) btn.textContent = finalized ? "✎ Edit plan" : "✓ Finalize plan";
+      if (btn) btn.textContent = finalized ? "✎ Edit" : "✓ Finalize";
       var banner = document.getElementById("final-banner");
       if (banner) banner.hidden = !finalized;
       document.querySelectorAll(".sugg-box:not(.more-box)").forEach(function (det) { det.open = finalized; });
@@ -2392,6 +2478,43 @@
       finalized = !finalized;
       saveJSON(LS_FINAL, finalized);
       applyFinalized(true);
+    });
+
+    /* ---------- Per-day finalize / edit ----------
+       Each day locks on its own: a finalized day shows only its picked
+       stops and the map (More Places, unpicked choices and editing
+       controls hide for that day only); "Edit this day" unlocks it.
+       Saved on this phone like the global finalize. The global Finalize
+       plan still locks every day at once and overrides these buttons
+       while it is on. */
+    function applyDayFinal(di, openMap) {
+      var card = document.getElementById("panel-" + di);
+      if (!card) return;
+      var fin = !!finalDays[di];
+      card.classList.toggle("day-final", fin);
+      var btn = document.getElementById("dayfin-" + di);
+      if (btn) {
+        btn.textContent = fin ? "✎ Edit this day" : "✓ Finalize this day";
+        btn.classList.toggle("is-final", fin);
+        btn.setAttribute("aria-pressed", fin ? "true" : "false");
+      }
+      if (fin) {
+        card.querySelectorAll(".sugg-box:not(.more-box)").forEach(function (det) { det.open = true; });
+        if (openMap) {
+          var trav = card.querySelector("details.travel");
+          if (trav) trav.open = true;
+        }
+      }
+    }
+    function applyAllDayFinals() { DAYS.forEach(function (d, di) { applyDayFinal(di, false); }); }
+    document.addEventListener("click", function (e) {
+      var fb = e.target.closest ? e.target.closest("[data-dayfin]") : null;
+      if (!fb) return;
+      var di = parseInt(fb.getAttribute("data-dayfin"), 10);
+      if (isNaN(di)) return;
+      if (finalDays[di]) { delete finalDays[di]; } else { finalDays[di] = true; }
+      saveJSON(LS_FINAL_DAYS, finalDays);
+      applyDayFinal(di, true);
     });
 
     /* ---------- Other families' plans (shared Google Sheet) ----------
