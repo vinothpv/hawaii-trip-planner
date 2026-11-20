@@ -475,6 +475,28 @@
         background: transparent; color: var(--teal); border-radius: 7px; padding: 3px 9px;
         font: inherit; font-size: 12px; font-weight: 800; min-height: 26px;
       }
+      /* Booking needs: a small button on each PICKED place (renderPicks
+         sets aria-pressed on the .opt, so the button shows only then),
+         plus the needs list in the To book view and per-day lines. */
+      .bn-btn {
+        flex: 0 0 auto; border: 1.5px solid var(--teal); background: var(--surface); color: var(--teal);
+        border-radius: 8px; padding: 4px 7px; font: inherit; font-size: 11.5px; font-weight: 800;
+        cursor: pointer; min-height: 32px; white-space: nowrap; display: none; align-self: center;
+      }
+      .opt[aria-pressed="true"] + .bn-btn { display: block; }
+      body.finalized .bn-btn { display: none !important; }
+      .day.day-final .bn-btn { display: none !important; }
+      .bn-head { font-size: 15px; margin: 12px 0 6px; }
+      .bn-need {
+        display: flex; gap: 8px; align-items: flex-start; background: var(--surface);
+        border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px;
+        margin-bottom: 6px; box-shadow: var(--shadow);
+      }
+      .bn-main { flex: 1 1 auto; min-width: 0; font-size: 13.5px; }
+      .bn-meta { display: block; font-size: 12px; color: var(--ink2); margin-top: 1px; }
+      .bn-actions { flex: 0 0 auto; display: flex; gap: 5px; }
+      .day-bn { margin: 0 0 5px; }
+      .day-bn .dbk-line { margin: 0 0 2px; font-size: 13px; }
       /* Finalized mode — only picked stops + map show on each day */
       .final-banner {
         flex: 0 0 auto; margin-top: 4px; background: var(--goldbg); border: 1px solid var(--gold);
@@ -644,7 +666,35 @@
 
       <section id="todo-sec" class="view-panel">
         <div class="sec-head"><h2>Still to book</h2></div>
+        <button type="button" class="btn primary bk-add-top" id="bn-add-top">＋ Add a booking need</button>
+        <details class="intro-box" id="bn-box" style="margin-top:2px;">
+          <summary>Booking need — parking, entrance fee, tickets… <span aria-hidden="true">▾</span></summary>
+          <div style="padding:0 4px 6px;">
+        <form class="add-form" id="bn-form" style="border:0;padding-top:0;">
+          <label for="bn-place">Place</label>
+          <input id="bn-place" required placeholder="e.g. Diamond Head" />
+          <label for="bn-day">Day</label>
+          <select id="bn-day"></select>
+          <label for="bn-type">Type</label>
+          <select id="bn-type">
+            <option>Parking</option><option>Entrance fee</option><option>Tickets</option><option>Other</option>
+          </select>
+          <label for="bn-desc">What it is</label>
+          <input id="bn-desc" placeholder="e.g. Diamond Head parking" />
+          <label for="bn-cost">Cost</label>
+          <input id="bn-cost" placeholder="e.g. $10" />
+          <label for="bn-by">Book by (optional)</label>
+          <input id="bn-by" placeholder="e.g. Dec 10" />
+          <div class="row" style="display:flex;gap:8px;margin-top:12px;">
+            <button type="submit" class="btn primary" id="bn-submit">Add booking need</button>
+            <button type="button" class="btn" id="bn-cancel" hidden>Cancel</button>
+          </div>
+        </form>
+          </div>
+        </details>
         <div class="todo"><ul id="static-todo-list"></ul></div>
+        <h3 class="bn-head">Your booking needs</h3>
+        <div id="bn-list"></div>
       </section>
 
       <section id="finalize-sec" class="view-panel">
@@ -1103,7 +1153,7 @@
     ];
 
     var LS_PICKS = "htp_picks_v1", LS_NAME = "htp_name_v1", LS_BK = "htp_bookings_v1",
-        LS_CUSTOM = "htp_custom_v1", LS_ORDER = "htp_order_v1";
+        LS_CUSTOM = "htp_custom_v1", LS_ORDER = "htp_order_v1", LS_BN = "htp_booking_needs_v1";
     function loadJSON(key, fallback) {
       try { var v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; }
     }
@@ -1118,6 +1168,11 @@
     }
     var bookings = loadJSON(LS_BK, null);
     if (!bookings) { bookings = JSON.parse(JSON.stringify(DEFAULT_BOOKINGS)); }
+    /* Booking needs: what a picked place still needs booked (parking,
+       entrance fee, tickets) and what it costs. Saved on this phone. */
+    var bookingNeeds = loadJSON(LS_BN, null);
+    if (!Array.isArray(bookingNeeds)) bookingNeeds = [];
+    function persistBookingNeeds() { saveJSON(LS_BN, bookingNeeds); }
     customStops = loadJSON(LS_CUSTOM, {}) || {};
     routeOrder = loadJSON(LS_ORDER, {}) || {};
 
@@ -1489,7 +1544,8 @@
         html += '<div class="opt-row"><button type="button" class="opt" data-opt="' + o.id + '" aria-pressed="false">' +
           '<span class="box">✓</span><span><span class="nm">' + gmapLinkHTML(o.name, stopQuery(o)) +
           (o.best ? '<span class="best">★ Best bet</span>' : "") +
-          '</span><span class="mt">' + o.meta + "</span></span></button></div>";
+          '</span><span class="mt">' + o.meta + "</span></span></button>" +
+          '<button type="button" class="bn-btn" data-bn-opt="' + o.id + '">＋ Booking need</button></div>';
       });
       html += "</div>";
       html += '<div id="custom-opts-' + di + '"></div>';
@@ -1500,7 +1556,8 @@
           html += '<div class="opt-row"><button type="button" class="opt smart" data-opt="' + o.id + '" aria-pressed="false">' +
             '<span class="box">✓</span><span><span class="nm">' + gmapLinkHTML(o.name, stopQuery(o)) +
             '<span class="stag ' + o.kind + '">' + KIND_LABEL[o.kind] + "</span>" +
-            '</span><span class="mt">' + o.why + "</span></span></button></div>";
+            '</span><span class="mt">' + o.why + "</span></span></button>" +
+            '<button type="button" class="bn-btn" data-bn-opt="' + o.id + '">＋ Booking need</button></div>';
         });
         html += "</div></details>";
       }
@@ -1718,7 +1775,8 @@
         else if (o.locStatus === "found") mt = "Added by you — pinned on your live map, in your route &amp; picks";
         else if (o.locStatus === "notfound") mt = "⚠ Couldn't locate this place — it's in your plan &amp; picks, but not pinned on the map and its drive times can't be shown";
         html += '<div class="opt-row"><button type="button" class="opt" data-opt="' + o.id + '" aria-pressed="false">' +
-          '<span class="box">✓</span><span><span class="nm">' + gmapLinkHTML(o.name, o.name + ", Hawaii") + '</span><span class="mt">' + mt + '</span></span></button></div>' +
+          '<span class="box">✓</span><span><span class="nm">' + gmapLinkHTML(o.name, o.name + ", Hawaii") + '</span><span class="mt">' + mt + '</span></span></button>' +
+          '<button type="button" class="bn-btn" data-bn-opt="' + o.id + '">＋ Booking need</button></div>' +
           '<p class="delstop-wrap" style="margin:-2px 0 8px;"><button type="button" class="btn small danger" data-delstop="' + o.id + '" data-di="' + di + '">Remove this stop</button></p>';
       });
       box.innerHTML = html;
@@ -1801,6 +1859,17 @@
          tab) — it must not toggle the pick or fire any other row action. */
       if (e.target.closest("[data-gmap]")) return;
       if (finalized) return;
+      /* "＋ Booking need" on a picked place: opens the booking-need form
+         pre-filled for that place — it must not toggle the pick. A
+         finalized day keeps it hidden (CSS) and inert here too. */
+      var bnBtn = e.target.closest("[data-bn-opt]");
+      if (bnBtn) {
+        var bnCard = bnBtn.closest(".day");
+        if (bnCard && bnCard.classList.contains("day-final")) return;
+        var bnRec = optById[bnBtn.getAttribute("data-bn-opt")];
+        if (bnRec) openBookingNeed({ place: bnRec.opt.name, day: bnRec.dayIdx });
+        return;
+      }
       var maBtn = e.target.closest("[data-moreadd]");
       if (maBtn) {
         addMorePlace(parseInt(maBtn.getAttribute("data-di"), 10), parseInt(maBtn.getAttribute("data-moreadd"), 10));
@@ -1973,6 +2042,15 @@
           });
           html += "</details>";
         }
+        var dayNeeds = bookingNeeds.filter(function (n) { return n.day === di; });
+        if (dayNeeds.length) {
+          html += '<div class="day-bn">';
+          dayNeeds.forEach(function (n) {
+            html += '<p class="dbk-line">Needs booking: <b>' + esc(n.desc || n.place) + "</b>" +
+              (n.cost ? " — " + esc(n.cost) : "") + (n.by ? " · by " + esc(n.by) : "") + "</p>";
+          });
+          html += "</div>";
+        }
         html += '<button type="button" class="daybk-add" data-addbk="' + di + '">＋ Add booking for this day</button>';
         box.innerHTML = html;
       });
@@ -2077,6 +2155,136 @@
     document.getElementById("bk-reset").addEventListener("click", function () {
       bookings = JSON.parse(JSON.stringify(DEFAULT_BOOKINGS));
       persistBookings(); renderBookings();
+    });
+
+    /* ---------- Booking needs (parking / entrance fees / tickets) ----------
+       A picked place can carry a note of what still has to be booked for
+       it, with the cost. Known costs pre-fill as editable suggestions;
+       anything else is added manually from the To book view. Needs are
+       NOT bookings — no confirmation, no complete toggle — just what to
+       book and what it costs. */
+    var BN_SUGGESTIONS = [
+      { key: "hanauma", type: "Entrance fee", desc: "Hanauma Bay entry", cost: "$25/person + $3 parking" },
+      { key: "diamond head", type: "Entrance fee", desc: "Diamond Head entry + parking", cost: "$5/person entry · $10/vehicle parking" },
+      { key: "missouri", type: "Tickets", desc: "USS Missouri", cost: "$35" },
+      { key: "bowfin", type: "Tickets", desc: "USS Bowfin", cost: "$15" },
+      { key: "aviation museum", type: "Tickets", desc: "Pearl Harbor Aviation Museum", cost: "$27" },
+      { key: "kualoa", type: "Tickets", desc: "Kualoa Ranch", cost: "$60–$200+" }
+    ];
+    function bnSuggestionFor(place) {
+      var n = normName(place);
+      for (var i = 0; i < BN_SUGGESTIONS.length; i++) {
+        if (n.indexOf(BN_SUGGESTIONS[i].key) !== -1) return BN_SUGGESTIONS[i];
+      }
+      return null;
+    }
+    /* Fill the booking-need form's Day picker (index values match DAYS). */
+    (function fillBnDayOptions() {
+      var sel = document.getElementById("bn-day");
+      if (!sel) return;
+      var html = '<option value="">No specific day</option>';
+      DAYS.forEach(function (d, di) { html += '<option value="' + di + '">' + esc(d.date) + "</option>"; });
+      sel.innerHTML = html;
+    })();
+    var bnEditId = null;
+    function setBnEditMode(id) {
+      bnEditId = id;
+      document.getElementById("bn-submit").textContent = id ? "Save changes" : "Add booking need";
+      var cancel = document.getElementById("bn-cancel");
+      if (cancel) cancel.hidden = !id;
+    }
+    function fillBnForm(vals) {
+      document.getElementById("bn-place").value = vals.place || "";
+      document.getElementById("bn-day").value = (typeof vals.day === "number" && !isNaN(vals.day)) ? String(vals.day) : "";
+      document.getElementById("bn-type").value = vals.type || "Other";
+      document.getElementById("bn-desc").value = vals.desc || "";
+      document.getElementById("bn-cost").value = vals.cost || "";
+      document.getElementById("bn-by").value = vals.by || "";
+    }
+    /* Open the booking-need form in the To book view: unfolded, pre-filled
+       from the picked place (with a known cost suggested where we have
+       one), scrolled into view with the first field focused. */
+    function openBookingNeed(prefill) {
+      showView("todo-sec");
+      var box = document.getElementById("bn-box");
+      if (box) box.open = true;
+      setBnEditMode(null);
+      var place = prefill && prefill.place ? prefill.place : "";
+      var sug = place ? bnSuggestionFor(place) : null;
+      fillBnForm({
+        place: place,
+        day: prefill && typeof prefill.day === "number" ? prefill.day : null,
+        type: sug ? sug.type : "Other",
+        desc: sug ? sug.desc : "",
+        cost: sug ? sug.cost : "",
+        by: ""
+      });
+      var sec = document.getElementById("todo-sec");
+      if (sec) sec.scrollTop = 0;
+      var first = document.getElementById("bn-place");
+      if (first) setTimeout(function () { try { first.focus({ preventScroll: true }); } catch (e) { first.focus(); } }, 80);
+    }
+    document.getElementById("bn-add-top").addEventListener("click", function () { openBookingNeed(null); });
+    document.getElementById("bn-cancel").addEventListener("click", function () {
+      setBnEditMode(null);
+      document.getElementById("bn-form").reset();
+    });
+    document.getElementById("bn-form").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var place = document.getElementById("bn-place").value.trim();
+      if (!place) return;
+      var dayVal = document.getElementById("bn-day").value;
+      var item = {
+        place: place,
+        day: dayVal === "" ? null : parseInt(dayVal, 10),
+        type: document.getElementById("bn-type").value,
+        desc: document.getElementById("bn-desc").value.trim(),
+        cost: document.getElementById("bn-cost").value.trim(),
+        by: document.getElementById("bn-by").value.trim()
+      };
+      if (bnEditId) {
+        item.id = bnEditId;
+        for (var i = 0; i < bookingNeeds.length; i++) {
+          if (bookingNeeds[i].id === bnEditId) { bookingNeeds[i] = item; break; }
+        }
+      } else {
+        /* Date.now() alone can repeat (two quick adds, a frozen clock),
+           which would make Edit/Delete hit every need sharing the id —
+           add a random suffix so each need's id is unique. */
+        item.id = "bn-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
+        bookingNeeds.push(item);
+      }
+      persistBookingNeeds();
+      setBnEditMode(null);
+      e.target.reset();
+      renderBookingNeeds();
+      renderDayBookings();
+    });
+    document.getElementById("todo-sec").addEventListener("click", function (e) {
+      if (!e.target.closest) return;
+      var del = e.target.closest("[data-bn-del]");
+      if (del) {
+        var did = del.getAttribute("data-bn-del");
+        bookingNeeds = bookingNeeds.filter(function (n) { return n.id !== did; });
+        if (bnEditId === did) { setBnEditMode(null); document.getElementById("bn-form").reset(); }
+        persistBookingNeeds();
+        renderBookingNeeds();
+        renderDayBookings();
+        return;
+      }
+      var ed = e.target.closest("[data-bn-edit]");
+      if (ed) {
+        var item = bookingNeeds.filter(function (n) { return n.id === ed.getAttribute("data-bn-edit"); })[0];
+        if (!item) return;
+        var box = document.getElementById("bn-box");
+        if (box) box.open = true;
+        setBnEditMode(item.id);
+        fillBnForm(item);
+        var sec = document.getElementById("todo-sec");
+        if (sec) sec.scrollTop = 0;
+        var first = document.getElementById("bn-place");
+        if (first) setTimeout(function () { try { first.focus({ preventScroll: true }); } catch (e) { first.focus(); } }, 80);
+      }
     });
 
     /* ---------- Smart deadline alerts (based on today's date) ---------- */
@@ -2337,6 +2545,7 @@
     document.getElementById("save-plan-btn").addEventListener("click", function () {
       saveJSON(LS_PICKS, picks);
       saveJSON(LS_BK, bookings);
+      saveJSON(LS_BN, bookingNeeds);
       saveJSON(LS_CUSTOM, customStops);
       saveJSON(LS_ORDER, routeOrder);
       saveJSON(LS_FAMILY, family);
@@ -2376,12 +2585,34 @@
       if (di === 10 || di === 11) return "Kauai, Hawaii";
       return "Oahu, Hawaii";
     }
-    /* The To book view is information only: the standing deadlines. */
+    /* The To book view: the standing deadlines, then the family's own
+       booking needs (parking / entrance fees / tickets, with costs). */
     function renderTodoView() {
       var staticEl = document.getElementById("static-todo-list");
       if (staticEl) {
         staticEl.innerHTML = STATIC_TODOS.map(function (s) { return "<li>" + s.html + "</li>"; }).join("");
       }
+      renderBookingNeeds();
+    }
+    function renderBookingNeeds() {
+      var el = document.getElementById("bn-list");
+      if (!el) return;
+      if (!bookingNeeds.length) {
+        el.innerHTML = '<p class="hint">No booking needs yet. Tap <b>＋ Booking need</b> on a place you\'ve picked, or <b>＋ Add a booking need</b> above, to note parking, entrance fees or tickets — with what they cost.</p>';
+        return;
+      }
+      var html = "";
+      bookingNeeds.forEach(function (n) {
+        var line = "<b>" + esc(n.desc || n.place) + "</b>";
+        if (n.cost) line += " — " + esc(n.cost);
+        if (typeof n.day === "number" && DAYS[n.day]) line += " · " + esc(DAYS[n.day].date);
+        if (n.by) line += " · by " + esc(n.by);
+        var meta = esc(n.type || "Other") + (n.desc && n.place && n.desc !== n.place ? " · " + esc(n.place) : "");
+        html += '<div class="bn-need"><div class="bn-main">' + line + '<span class="bn-meta">' + meta + "</span></div>" +
+          '<div class="bn-actions"><button type="button" class="btn small" data-bn-edit="' + n.id + '">Edit</button>' +
+          '<button type="button" class="btn small danger" data-bn-del="' + n.id + '">Delete</button></div></div>';
+      });
+      el.innerHTML = html;
     }
     /* ---------- More places: plan-exclusion matcher + rendering ---------- */
     var PLAN_TOKENS = null;
